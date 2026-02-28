@@ -1,7 +1,11 @@
 import React from 'react';
-import { ArrowRight, Zap, Dumbbell, Infinity } from 'lucide-react';
+import {ArrowRight, Dumbbell, Infinity, Zap} from 'lucide-react';
 
-export function Hero() {
+type HeroProps = {
+  onCtaClick: () => void;
+};
+
+export function Hero({onCtaClick}: HeroProps) {
   return (
     <section className="relative flex flex-col items-center justify-center overflow-hidden bg-[#0a1114] min-h-[calc(100vh-80px)] py-16">
       <div className="absolute inset-0 z-0 pointer-events-none">
@@ -30,10 +34,18 @@ export function Hero() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-5 mt-6">
-            <button className="flex items-center justify-center h-14 px-8 text-base font-bold text-[#0a1114] bg-primary hover:bg-primary-hover transition-all rounded shadow-[0_0_20px_rgba(34,211,238,0.4)] hover:shadow-[0_0_30px_rgba(34,211,238,0.6)] hover:-translate-y-0.5">
+            <button
+              type="button"
+              onClick={onCtaClick}
+              className="flex items-center justify-center h-14 px-8 text-base font-bold text-[#0a1114] bg-primary hover:bg-primary-hover transition-all rounded shadow-[0_0_20px_rgba(34,211,238,0.4)] hover:shadow-[0_0_30px_rgba(34,211,238,0.6)] hover:-translate-y-0.5"
+            >
               Получить стратегическую сессию
             </button>
-            <button className="flex items-center justify-center h-14 px-8 text-base font-semibold text-white bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all rounded group shadow-sm">
+            <button
+              type="button"
+              onClick={onCtaClick}
+              className="flex items-center justify-center h-14 px-8 text-base font-semibold text-white bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all rounded group shadow-sm"
+            >
               <span className="mr-3">Посмотреть как работает</span>
               <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1 text-primary" />
             </button>

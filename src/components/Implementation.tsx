@@ -39,7 +39,11 @@ export function Implementation() {
   );
 }
 
-export function Final() {
+type FinalProps = {
+  onCtaClick: () => void;
+};
+
+export function Final({onCtaClick}: FinalProps) {
   return (
     <section className="w-full bg-primary py-24 md:py-32 relative overflow-hidden">
       <div className="absolute inset-0 bg-grid-pattern opacity-20 pointer-events-none mix-blend-overlay"></div>
@@ -52,7 +56,11 @@ export function Final() {
           <p>Можно увеличивать ФОТ. А можно усиливать систему.</p>
           <p className="font-bold text-[#0a1114] mt-2">Запуск за 2–4 недели.</p>
         </div>
-        <button className="mt-8 flex items-center justify-center h-16 px-8 text-lg font-bold text-white bg-[#0a1114] hover:bg-[#111a1f] transition-all rounded-xl shadow-xl hover:-translate-y-1 group">
+        <button
+          type="button"
+          onClick={onCtaClick}
+          className="mt-8 flex items-center justify-center h-16 px-8 text-lg font-bold text-white bg-[#0a1114] hover:bg-[#111a1f] transition-all rounded-xl shadow-xl hover:-translate-y-1 group"
+        >
           <span className="mr-3">Протестировать систему</span>
           <ArrowRight className="w-6 h-6 transition-transform group-hover:translate-x-1 text-primary" />
         </button>
