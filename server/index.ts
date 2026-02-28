@@ -4,6 +4,8 @@ import express from 'express';
 
 type LeadPayload = {
   name?: string;
+  phone?: string;
+  telegram?: string;
   contact?: string;
   page?: string;
 };
@@ -16,8 +18,31 @@ const PORT = Number(process.env.API_PORT || 8787);
 loadEnv({path: '.env.local'});
 loadEnv({path: '.env'});
 
-const formatLeadMessage = (params: {name: string; contact: string; page: string}) => {
-  const {name, contact, page} = params;
+const buildContact = (payload: LeadPayload) => {
+  const phone = (payload.phone ?? '').trim();
+  const telegram = (payload.telegram ?? '').trim();
+  const fallbackContact = (payload.contact ?? '').trim();
+  const contactParts = [
+    phone ? `phone: ${phone}` : '',
+    telegram ? `telegram: ${telegram}` : '',
+    !phone && !telegram ? fallbackContact : '',
+  ].filter(Boolean);
+
+  return {
+    phone,
+    telegram,
+    contact: contactParts.join(' | '),
+  };
+};
+
+const formatLeadMessage = (params: {
+  name: string;
+  contact: string;
+  phone: string;
+  telegram: string;
+  page: string;
+}) => {
+  const {name, contact, phone, telegram, page} = params;
   const formattedTime = new Intl.DateTimeFormat('ru-RU', {
     dateStyle: 'short',
     timeStyle: 'medium',
@@ -28,10 +53,14 @@ const formatLeadMessage = (params: {name: string; contact: string; page: string}
     'Zayavka s sajta Executive',
     '',
     `Imya: ${name}`,
-    `Kontakt: ${contact}`,
+    phone ? `Telefon: ${phone}` : '',
+    telegram ? `Telegram: ${telegram}` : '',
+    !phone && !telegram ? `Kontakt: ${contact}` : '',
     `Stranica: ${page || '-'}`,
     `Vremya (MSK): ${formattedTime}`,
-  ].join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 };
 
 const notifyTelegram = async (params: {
@@ -39,12 +68,14 @@ const notifyTelegram = async (params: {
   chatId?: string;
   name: string;
   contact: string;
+  phone: string;
+  telegram: string;
   page: string;
 }) => {
-  const {token, chatId, name, contact, page} = params;
+  const {token, chatId, name, contact, phone, telegram, page} = params;
   if (!token || !chatId) return;
 
-  const text = formatLeadMessage({name, contact, page});
+  const text = formatLeadMessage({name, contact, phone, telegram, page});
 
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -71,9 +102,10 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.post('/api/leads', async (req, res) => {
-  const {name, contact} = (req.body ?? {}) as LeadPayload;
+  const payload = (req.body ?? {}) as LeadPayload;
+  const {name} = payload;
   const safeName = (name ?? '').trim();
-  const safeContact = (contact ?? '').trim();
+  const {contact: safeContact, phone, telegram} = buildContact(payload);
   const page = req.headers.referer ?? '';
 
   if (!safeName || !safeContact) {
@@ -95,6 +127,8 @@ app.post('/api/leads', async (req, res) => {
       body: JSON.stringify({
         name: safeName,
         contact: safeContact,
+        phone,
+        telegram,
         page,
       }),
     });
@@ -119,6 +153,8 @@ app.post('/api/leads', async (req, res) => {
       chatId: process.env.TELEGRAM_CHAT_ID,
       name: safeName,
       contact: safeContact,
+      phone,
+      telegram,
       page,
     });
 

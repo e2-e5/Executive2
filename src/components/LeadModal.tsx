@@ -9,16 +9,56 @@ type LeadModalProps = {
 type Status = 'idle' | 'submitting' | 'success' | 'error';
 
 const errorMessages: Record<string, string> = {
-  name_and_contact_required: 'Укажите ФИО и контакт.',
+  name_and_contact_required: 'Укажите ФИО и хотя бы один контакт: телефон или Telegram.',
   google_script_not_configured: 'Интеграция Google Sheets не настроена.',
   google_script_request_failed: 'Сервис Google временно недоступен.',
   google_script_error: 'Не удалось сохранить заявку.',
   google_script_invalid_response: 'Google Script вернул неожиданный ответ.',
 };
 
+const formatPhoneInput = (rawValue: string) => {
+  let digits = rawValue.replace(/\D/g, '');
+
+  if (digits.startsWith('8')) {
+    digits = `7${digits.slice(1)}`;
+  } else if (!digits.startsWith('7')) {
+    digits = `7${digits}`;
+  }
+
+  digits = digits.slice(0, 11);
+  const local = digits.slice(1);
+
+  let result = '+7';
+  if (local.length > 0) result += ` (${local.slice(0, 3)}`;
+  if (local.length >= 3) result += ')';
+  if (local.length > 3) result += ` ${local.slice(3, 6)}`;
+  if (local.length > 6) result += `-${local.slice(6, 8)}`;
+  if (local.length > 8) result += `-${local.slice(8, 10)}`;
+  return result;
+};
+
+const normalizePhone = (value: string) => {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('7')) {
+    return `+${digits}`;
+  }
+  return '';
+};
+
+const normalizeTelegram = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  const withoutUrl = trimmed
+    .replace(/^https?:\/\/t\.me\//i, '')
+    .replace(/^t\.me\//i, '')
+    .replace(/^@+/, '');
+  return withoutUrl ? `@${withoutUrl}` : '';
+};
+
 export function LeadModal({isOpen, onClose}: LeadModalProps) {
   const [name, setName] = useState('');
-  const [contact, setContact] = useState('');
+  const [phone, setPhone] = useState('');
+  const [telegram, setTelegram] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
   const closeTimerRef = useRef<number | null>(null);
@@ -26,7 +66,8 @@ export function LeadModal({isOpen, onClose}: LeadModalProps) {
   useEffect(() => {
     if (!isOpen) {
       setName('');
-      setContact('');
+      setPhone('');
+      setTelegram('');
       setStatus('idle');
       setError('');
     }
@@ -57,7 +98,11 @@ export function LeadModal({isOpen, onClose}: LeadModalProps) {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const safeName = name.trim();
-    const safeContact = contact.trim();
+    const safePhone = normalizePhone(phone);
+    const safeTelegram = normalizeTelegram(telegram);
+    const safeContact = [safePhone ? `phone: ${safePhone}` : '', safeTelegram ? `telegram: ${safeTelegram}` : '']
+      .filter(Boolean)
+      .join(' | ');
 
     if (!safeName || !safeContact) {
       setStatus('error');
@@ -76,6 +121,8 @@ export function LeadModal({isOpen, onClose}: LeadModalProps) {
         },
         body: JSON.stringify({
           name: safeName,
+          phone: safePhone,
+          telegram: safeTelegram,
           contact: safeContact,
         }),
       });
@@ -135,14 +182,25 @@ export function LeadModal({isOpen, onClose}: LeadModalProps) {
             />
           </label>
           <label className="flex flex-col gap-2 text-sm text-slate-300">
-            Контакт
+            Телефон
             <input
               className="h-12 rounded-lg bg-white/5 border border-white/10 px-4 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/60"
-              placeholder="Телефон или email"
-              value={contact}
-              onChange={(event) => setContact(event.target.value)}
+              placeholder="+7 (999) 123-45-67"
+              value={phone}
+              onChange={(event) => setPhone(formatPhoneInput(event.target.value))}
+              type="tel"
+              inputMode="tel"
               disabled={status === 'submitting'}
-              required
+            />
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-slate-300">
+            Telegram
+            <input
+              className="h-12 rounded-lg bg-white/5 border border-white/10 px-4 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/60"
+              placeholder="@username"
+              value={telegram}
+              onChange={(event) => setTelegram(event.target.value)}
+              disabled={status === 'submitting'}
             />
           </label>
 

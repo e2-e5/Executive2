@@ -6,6 +6,8 @@ type Env = {
 
 type LeadPayload = {
   name?: string;
+  phone?: string;
+  telegram?: string;
   contact?: string;
 };
 
@@ -17,8 +19,31 @@ const json = (data: unknown, status = 200) =>
     },
   });
 
-const formatLeadMessage = (params: {name: string; contact: string; page: string}) => {
-  const {name, contact, page} = params;
+const buildContact = (payload: LeadPayload) => {
+  const phone = (payload.phone ?? '').trim();
+  const telegram = (payload.telegram ?? '').trim();
+  const fallbackContact = (payload.contact ?? '').trim();
+  const contactParts = [
+    phone ? `phone: ${phone}` : '',
+    telegram ? `telegram: ${telegram}` : '',
+    !phone && !telegram ? fallbackContact : '',
+  ].filter(Boolean);
+
+  return {
+    phone,
+    telegram,
+    contact: contactParts.join(' | '),
+  };
+};
+
+const formatLeadMessage = (params: {
+  name: string;
+  contact: string;
+  phone: string;
+  telegram: string;
+  page: string;
+}) => {
+  const {name, contact, phone, telegram, page} = params;
   const formattedTime = new Intl.DateTimeFormat('ru-RU', {
     dateStyle: 'short',
     timeStyle: 'medium',
@@ -29,10 +54,14 @@ const formatLeadMessage = (params: {name: string; contact: string; page: string}
     'Zayavka s sajta Executive',
     '',
     `Imya: ${name}`,
-    `Kontakt: ${contact}`,
+    phone ? `Telefon: ${phone}` : '',
+    telegram ? `Telegram: ${telegram}` : '',
+    !phone && !telegram ? `Kontakt: ${contact}` : '',
     `Stranica: ${page || '-'}`,
     `Vremya (MSK): ${formattedTime}`,
-  ].join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 };
 
 const notifyTelegram = async (params: {
@@ -40,12 +69,14 @@ const notifyTelegram = async (params: {
   chatId?: string;
   name: string;
   contact: string;
+  phone: string;
+  telegram: string;
   page: string;
 }) => {
-  const {token, chatId, name, contact, page} = params;
+  const {token, chatId, name, contact, phone, telegram, page} = params;
   if (!token || !chatId) return;
 
-  const text = formatLeadMessage({name, contact, page});
+  const text = formatLeadMessage({name, contact, phone, telegram, page});
 
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -80,7 +111,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   const name = (payload.name ?? '').trim();
-  const contact = (payload.contact ?? '').trim();
+  const {contact, phone, telegram} = buildContact(payload);
   const page = context.request.headers.get('referer') ?? '';
 
   if (!name || !contact) {
@@ -96,6 +127,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       body: JSON.stringify({
         name,
         contact,
+        phone,
+        telegram,
         page,
       }),
     });
@@ -120,6 +153,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       chatId: TELEGRAM_CHAT_ID,
       name,
       contact,
+      phone,
+      telegram,
       page,
     });
 
